@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Pulse — Unified AI News Feed</title>
+  <meta name="description" content="Stay ahead of the curve with a real-time, unified feed of AI announcements from OpenAI, Anthropic, Google DeepMind, and Mistral AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── Background glow orbs ── -->
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+
+  <!-- ── Header ── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-name">AI <span class="gradient-text">Pulse</span></h1>
+          <p class="brand-tagline">Unified AI News Feed</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span class="last-updated" id="lastUpdated">—</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="refreshFeed()" title="Refresh feed">
+          <svg class="refresh-icon" id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+          </svg>
+          <span class="refresh-label">Refresh</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Filter Bar ── -->
+  <div class="filter-bar-wrapper">
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">
+        <span class="filter-dot filter-dot-all"></span>
+        All Sources
+      </button>
+      {% for feed in feeds %}
+      <button class="filter-btn" data-filter="{{ feed.id }}" onclick="setFilter('{{ feed.id }}')"
+              style="--company-color: {{ feed.color }};">
+        <span class="filter-dot" style="background:{{ feed.color }};"></span>
+        {{ feed.name }}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Main Content ── -->
+  <main class="main-content">
+    <!-- Stats bar -->
+    <div class="stats-bar" id="statsBar">
+      <span class="stats-text" id="statsText">Loading…</span>
+      <div class="source-pills" id="sourcePills"></div>
+    </div>
+
+    <!-- Feed -->
+    <div class="feed" id="feed">
+      <!-- Skeleton loaders -->
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon">📡</div>
+      <h3>No articles found</h3>
+      <p>Try a different filter or refresh the feed.</p>
+    </div>
+
+    <!-- Error state -->
+    <div class="error-state hidden" id="errorState">
+      <div class="error-icon">⚠️</div>
+      <h3>Could not load feed</h3>
+      <p id="errorMsg">An unexpected error occurred. Please try again.</p>
+      <button class="refresh-btn" onclick="refreshFeed()">Try Again</button>
+    </div>
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="site-footer">
+    <p>Built with ❤️ · Sources: OpenAI · Anthropic · Google DeepMind · Mistral AI</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

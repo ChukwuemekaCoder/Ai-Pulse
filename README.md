@@ -95,12 +95,6 @@ Ai-Pulse/
 
 ---
 
-## 📸 Screenshots
-
-> Screenshots coming soon. Clone the repo and run locally to see the full UI — it looks best in a dark environment.
-
----
-
 ## 🔮 Future Improvements
 
 1. **Persistent Cache with Redis** — Replace the in-memory dict cache with Redis so the cache survives server restarts and scales across multiple workers

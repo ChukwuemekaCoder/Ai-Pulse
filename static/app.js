@@ -115,17 +115,32 @@ function buildCardHTML(item, index) {
         <a class="read-link" href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">
           Read article <span class="read-link-arrow">→</span>
         </a>
-        <a class="tweet-btn"
-           href="${escapeHtml(tweetUrl)}"
-           target="_blank"
-           rel="noopener noreferrer"
-           title="Share on X / Twitter"
-           aria-label="Share on X">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.263 5.638L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
-          </svg>
-          Tweet
-        </a>
+        <div class="card-actions">
+          <button class="copy-btn"
+                  data-copy-title="${escapeHtml(item.title)}"
+                  data-copy-source="${escapeHtml(item.source_name)}"
+                  data-copy-link="${escapeHtml(item.link)}"
+                  onclick="copyCard(this)"
+                  title="Copy to clipboard"
+                  aria-label="Copy article details">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span class="copy-label">Copy</span>
+          </button>
+          <a class="tweet-btn"
+             href="${escapeHtml(tweetUrl)}"
+             target="_blank"
+             rel="noopener noreferrer"
+             title="Share on X / Twitter"
+             aria-label="Share on X">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.263 5.638L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
+            </svg>
+            Tweet
+          </a>
+        </div>
       </div>
     </article>`;
 }
@@ -135,6 +150,85 @@ function hexToRgb(hex) {
   return m
     ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
     : null;
+}
+
+// ── Clipboard ─────────────────────────────────────────────────
+
+function copyCard(btn) {
+  const title  = btn.dataset.copyTitle;
+  const source = btn.dataset.copySource;
+  const link   = btn.dataset.copyLink;
+  const text   = `${title}\nSource: ${source}\n${link}`;
+
+  const finish = (ok) => {
+    const icon = btn.querySelector('svg').outerHTML;
+    if (ok) {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span class="copy-label">Copied!</span>`;
+      btn.classList.add('copied');
+    } else {
+      btn.innerHTML = `${icon}<span class="copy-label">Failed</span>`;
+    }
+    setTimeout(() => {
+      btn.innerHTML = `${icon}<span class="copy-label">Copy</span>`;
+      btn.classList.remove('copied');
+    }, 2000);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => finish(true)).catch(() => finish(false));
+  } else {
+    // Fallback for non-HTTPS / older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { finish(document.execCommand('copy')); }
+    catch { finish(false); }
+    document.body.removeChild(ta);
+  }
+}
+
+// ── CSV Export ─────────────────────────────────────────────────
+
+function exportToCSV() {
+  const visible = getVisibleItems();
+  if (!visible.length) return;
+
+  const escape = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+
+  const headers = ['Title', 'Source', 'Published', 'Link', 'Summary'];
+  const rows = visible.map(item => [
+    escape(item.title),
+    escape(item.source_name),
+    escape(formatDate(item.published_iso)),
+    escape(item.link),
+    escape(item.summary),
+  ]);
+
+  const csv  = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().split('T')[0];
+  const filter = activeFilter === 'all' ? 'all-sources' : activeFilter;
+
+  a.href     = url;
+  a.download = `ai-pulse-${filter}-${date}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // Brief button feedback
+  const btn = document.getElementById('exportBtn');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Exported!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+  }
 }
 
 // ── Filter & Render Pipeline ───────────────────────────────────

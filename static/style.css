@@ -425,6 +425,71 @@ body {
 }
 .tweet-btn svg { width: 13px; height: 13px; }
 
+/* Card action group */
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Copy button */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+              color var(--transition), transform var(--transition);
+}
+.copy-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.copy-btn:hover {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.22);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.copy-btn.copied {
+  background: rgba(16,185,129,0.12);
+  border-color: rgba(16,185,129,0.35);
+  color: #6ee7b7;
+}
+
+/* Export CSV button */
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+              color var(--transition), transform var(--transition);
+}
+.export-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.export-btn:active { transform: translateY(0); }
+.export-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.export-btn svg { width: 15px; height: 15px; }
+
 /* ─────────────────────────────────────────────────────────────
    Skeleton Loader
    ───────────────────────────────────────────────────────────── */
@@ -509,6 +574,7 @@ body {
   .brand-name   { font-size: 1.2rem; }
   .brand-tagline { display: none; }
   .refresh-label { display: none; }
+  .export-label  { display: none; }
   .filter-bar   { padding: 10px 16px; }
   .main-content { padding: 20px 16px 60px; }
   .card-title   { font-size: 0.95rem; }

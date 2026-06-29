@@ -61,13 +61,6 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-function estimateReadTime(text) {
-  if (!text) return "1 min read";
-  const words = text.trim().split(/\s+/).length;
-  const minutes = Math.max(1, Math.round(words / 200));
-  return `${minutes} min read`;
-}
-
 function markAsRead(link, element) {
   if (!readArticles.includes(link)) {
     readArticles.push(link);
@@ -99,6 +92,7 @@ function buildCardHTML(item, index) {
   const delay   = Math.min(index * 35, 500);
   const isRead  = readArticles.includes(item.link);
   const readClass = isRead ? " read" : "";
+  const readTime  = item.read_time ? `${item.read_time} min read` : "4 min read";
 
   return `
     <article class="news-card${readClass}" data-source="${escapeHtml(item.source_id)}"
@@ -115,7 +109,7 @@ function buildCardHTML(item, index) {
             ${relativeTime(item.published_iso)}
           </time>
           <span class="read-time-dot">•</span>
-          <span class="read-time">${estimateReadTime(item.summary || item.title)}</span>
+          <span class="read-time">${readTime}</span>
         </div>
       </div>
 

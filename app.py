@@ -94,6 +94,7 @@ def clean_summary(text: str, max_len: int = 280) -> str:
 
 def fetch_feed(feed_cfg: dict) -> list[dict]:
     """Fetch and parse a single RSS feed, returning a list of item dicts."""
+    import re
     items = []
     try:
         resp = requests.get(feed_cfg["url"], headers=HEADERS, timeout=15)
@@ -101,7 +102,8 @@ def fetch_feed(feed_cfg: dict) -> list[dict]:
         parsed = feedparser.parse(resp.text)
         for entry in parsed.entries:
             pub_dt = parse_date(entry)
-            # Build a clean summary
+            
+            # Find the longest available raw content from the feed to calculate read time
             summary_raw = (
                 getattr(entry, "summary", "")
                 or getattr(entry, "description", "")
@@ -109,6 +111,34 @@ def fetch_feed(feed_cfg: dict) -> list[dict]:
                 if hasattr(entry, "content") and entry.content
                 else ""
             )
+            
+            # Attempt to get full content block for word count estimation
+            full_content_raw = ""
+            if hasattr(entry, "content") and entry.content:
+                full_content_raw = getattr(entry, "content", [{}])[0].get("value", "")
+            if not full_content_raw:
+                full_content_raw = getattr(entry, "description", "") or getattr(entry, "summary", "")
+            
+            # Clean HTML to estimate actual text word count
+            cleaned_full_text = re.sub(r"<[^>]+>", "", full_content_raw or "")
+            word_count = len(cleaned_full_text.split())
+            
+            # Heuristic calculation:
+            # Corporate/Research AI blog posts average ~200 words per minute.
+            # If the RSS feed entry contains only an abstract/summary (< 150 words),
+            # we apply a realistic post-length heuristic based on the company's typical blog post length.
+            if word_count > 150:
+                read_time = max(1, round(word_count / 200))
+            else:
+                # Fallback heuristics for truncated feed descriptions
+                heuristics = {
+                    "openai": 4,      # OpenAI announcements are usually 3-5 mins read
+                    "anthropic": 7,   # Anthropic posts/research papers are usually longer (6-8 mins)
+                    "deepmind": 6,    # DeepMind research blogs are dense (~5-7 mins)
+                    "mistral": 4      # Mistral releases are medium length (~3-5 mins)
+                }
+                read_time = heuristics.get(feed_cfg["id"], 4)
+            
             items.append(
                 {
                     "id": getattr(entry, "id", entry.get("link", "")),
@@ -120,6 +150,7 @@ def fetch_feed(feed_cfg: dict) -> list[dict]:
                     "source_id": feed_cfg["id"],
                     "source_name": feed_cfg["name"],
                     "source_color": feed_cfg["color"],
+                    "read_time": read_time,
                 }
             )
     except Exception as exc:

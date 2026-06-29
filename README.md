@@ -2,7 +2,7 @@
 
 > A real-time, unified AI news aggregator that merges RSS feeds from the world's leading AI labs into one clean, filterable feed.
 
-### 🌐 [Live Demo (Vercel)](https://ai-pulse-topaz.vercel.app/)
+
 
 Instead of juggling four different blogs and newsletters, AI Pulse pulls the latest announcements from **OpenAI**, **Anthropic**, **Google DeepMind**, and **Mistral AI** into a single chronological stream — refreshed on demand, filterable by company, and shareable in one click.
 

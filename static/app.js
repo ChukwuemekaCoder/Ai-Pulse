@@ -332,9 +332,30 @@ function refreshFeed() {
   loadFeed("/api/news/refresh");
 }
 
+// ── Theme Switcher ─────────────────────────────────────────────
+
+function toggleTheme(isLight) {
+  if (isLight) {
+    document.documentElement.setAttribute("data-theme", "light");
+    localStorage.setItem("theme", "light");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("theme", "dark");
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────────
 
 (function init() {
+  // Load saved theme preference
+  const savedTheme = localStorage.getItem("theme");
+  const isLight = (savedTheme === "light");
+  const themeCheck = document.getElementById("themeCheck");
+  if (themeCheck) {
+    themeCheck.checked = isLight;
+  }
+  toggleTheme(isLight);
+
   loadFeed("/api/news");
 
   // Periodically refresh the relative timestamps (every 60 s)

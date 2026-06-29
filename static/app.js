@@ -7,6 +7,8 @@
 // ── State ──────────────────────────────────────────────────────
 let allItems   = [];
 let activeFilter = "all";
+let searchQuery = "";
+let readArticles = JSON.parse(localStorage.getItem("readArticles") || "[]");
 
 // Company colors (mirrors server-side config)
 const COMPANY_COLORS = {
@@ -59,6 +61,24 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+function estimateReadTime(text) {
+  if (!text) return "1 min read";
+  const words = text.trim().split(/\s+/).length;
+  const minutes = Math.max(1, Math.round(words / 200));
+  return `${minutes} min read`;
+}
+
+function markAsRead(link, element) {
+  if (!readArticles.includes(link)) {
+    readArticles.push(link);
+    localStorage.setItem("readArticles", JSON.stringify(readArticles));
+  }
+  const card = element.closest(".news-card");
+  if (card) {
+    card.classList.add("read");
+  }
+}
+
 // ── Render ──────────────────────────────────────────────────────
 
 function buildSkeletonHTML() {
@@ -77,15 +97,11 @@ function buildCardHTML(item, index) {
   const color   = item.source_color || "#818cf8";
   const tweetUrl = buildTweetUrl(item);
   const delay   = Math.min(index * 35, 500);
-
-  // Dim background tint from source color
-  const tintRgb = hexToRgb(color);
-  const tintCss = tintRgb
-    ? `rgba(${tintRgb.r},${tintRgb.g},${tintRgb.b},0.06)`
-    : "transparent";
+  const isRead  = readArticles.includes(item.link);
+  const readClass = isRead ? " read" : "";
 
   return `
-    <article class="news-card" data-source="${escapeHtml(item.source_id)}"
+    <article class="news-card${readClass}" data-source="${escapeHtml(item.source_id)}"
              style="animation-delay:${delay}ms; --card-accent-color:${color};"
              aria-label="${escapeHtml(item.title)}">
       <div class="card-header">
@@ -98,11 +114,13 @@ function buildCardHTML(item, index) {
                 title="${formatDate(item.published_iso)}">
             ${relativeTime(item.published_iso)}
           </time>
+          <span class="read-time-dot">•</span>
+          <span class="read-time">${estimateReadTime(item.summary || item.title)}</span>
         </div>
       </div>
 
       <h2 class="card-title">
-        <a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">
+        <a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" onclick="markAsRead('${escapeHtml(item.link)}', this)">
           ${escapeHtml(item.title)}
         </a>
       </h2>
@@ -112,7 +130,7 @@ function buildCardHTML(item, index) {
         : ""}
 
       <div class="card-footer">
-        <a class="read-link" href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">
+        <a class="read-link" href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" onclick="markAsRead('${escapeHtml(item.link)}', this)">
           Read article <span class="read-link-arrow">→</span>
         </a>
         <div class="card-actions">
@@ -138,7 +156,7 @@ function buildCardHTML(item, index) {
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.263 5.638L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
             </svg>
-            Tweet
+             Tweet
           </a>
         </div>
       </div>
@@ -152,6 +170,27 @@ function hexToRgb(hex) {
     : null;
 }
 
+// ── Toast Notifications ───────────────────────────────────────
+
+function showToast(message, type = "info") {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+  
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  
+  // Fade in
+  setTimeout(() => toast.classList.add("show"), 10);
+  
+  // Fade out and remove after 3s
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.addEventListener("transitionend", () => toast.remove());
+  }, 3000);
+}
+
 // ── Clipboard ─────────────────────────────────────────────────
 
 function copyCard(btn) {
@@ -160,32 +199,27 @@ function copyCard(btn) {
   const link   = btn.dataset.copyLink;
   const text   = `${title}\nSource: ${source}\n${link}`;
 
-  const finish = (ok) => {
-    const icon = btn.querySelector('svg').outerHTML;
-    if (ok) {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span class="copy-label">Copied!</span>`;
-      btn.classList.add('copied');
-    } else {
-      btn.innerHTML = `${icon}<span class="copy-label">Failed</span>`;
-    }
-    setTimeout(() => {
-      btn.innerHTML = `${icon}<span class="copy-label">Copy</span>`;
-      btn.classList.remove('copied');
-    }, 2000);
-  };
-
   if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).then(() => finish(true)).catch(() => finish(false));
+    navigator.clipboard.writeText(text)
+      .then(() => showToast("Copied card details to clipboard!", "success"))
+      .catch(() => showToast("Failed to copy clipboard", "error"));
   } else {
     // Fallback for non-HTTPS / older browsers
-    const ta = document.createElement('textarea');
+    const ta = document.createElement("textarea");
     ta.value = text;
-    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+    ta.style.cssText = "position:fixed;opacity:0;pointer-events:none;";
     document.body.appendChild(ta);
     ta.focus();
     ta.select();
-    try { finish(document.execCommand('copy')); }
-    catch { finish(false); }
+    try {
+      if (document.execCommand("copy")) {
+        showToast("Copied card details to clipboard!", "success");
+      } else {
+        showToast("Failed to copy clipboard", "error");
+      }
+    } catch {
+      showToast("Failed to copy clipboard", "error");
+    }
     document.body.removeChild(ta);
   }
 }
@@ -194,11 +228,14 @@ function copyCard(btn) {
 
 function exportToCSV() {
   const visible = getVisibleItems();
-  if (!visible.length) return;
+  if (!visible.length) {
+    showToast("No articles available to export.", "error");
+    return;
+  }
 
-  const escape = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+  const escape = (val) => `"${String(val || "").replace(/"/g, '""')}"`;
 
-  const headers = ['Title', 'Source', 'Published', 'Link', 'Summary'];
+  const headers = ["Title", "Source", "Published", "Link", "Summary"];
   const rows = visible.map(item => [
     escape(item.title),
     escape(item.source_name),
@@ -207,12 +244,12 @@ function exportToCSV() {
     escape(item.summary),
   ]);
 
-  const csv  = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const csv  = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  const date = new Date().toISOString().split('T')[0];
-  const filter = activeFilter === 'all' ? 'all-sources' : activeFilter;
+  const a    = document.createElement("a");
+  const date = new Date().toISOString().split("T")[0];
+  const filter = activeFilter === "all" ? "all-sources" : activeFilter;
 
   a.href     = url;
   a.download = `ai-pulse-${filter}-${date}.csv`;
@@ -221,21 +258,24 @@ function exportToCSV() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  // Brief button feedback
-  const btn = document.getElementById('exportBtn');
-  if (btn) {
-    const orig = btn.textContent;
-    btn.textContent = '✓ Exported!';
-    btn.disabled = true;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
-  }
+  showToast(`Successfully exported ${visible.length} articles!`, "success");
 }
 
 // ── Filter & Render Pipeline ───────────────────────────────────
 
 function getVisibleItems() {
-  if (activeFilter === "all") return allItems;
-  return allItems.filter(i => i.source_id === activeFilter);
+  let items = allItems;
+  if (activeFilter !== "all") {
+    items = items.filter(i => i.source_id === activeFilter);
+  }
+  if (searchQuery) {
+    items = items.filter(i => {
+      const titleMatch = (i.title || "").toLowerCase().includes(searchQuery);
+      const summaryMatch = (i.summary || "").toLowerCase().includes(searchQuery);
+      return titleMatch || summaryMatch;
+    });
+  }
+  return items;
 }
 
 function renderFeed() {
@@ -280,6 +320,39 @@ function updateLastUpdated(ts) {
   if (!ts) { el.textContent = ""; return; }
   const d = new Date(ts * 1000);
   el.textContent = `Updated ${relativeTime(d.toISOString())}`;
+  el._ts = ts; // save timestamp reference
+}
+
+// ── Search & Reset Filters ─────────────────────────────────────
+
+function handleSearch(val) {
+  searchQuery = val.toLowerCase().trim();
+  const clearBtn = document.getElementById("clearSearchBtn");
+  if (clearBtn) {
+    if (searchQuery) {
+      clearBtn.classList.remove("hidden");
+    } else {
+      clearBtn.classList.add("hidden");
+    }
+  }
+  renderFeed();
+}
+
+function clearSearch() {
+  const input = document.getElementById("searchInput");
+  if (input) input.value = "";
+  handleSearch("");
+}
+
+function clearFilters() {
+  setFilter("all");
+  clearSearch();
+}
+
+// ── Navigation & Scroll ────────────────────────────────────────
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // ── Filter ─────────────────────────────────────────────────────
@@ -357,6 +430,18 @@ function toggleTheme(isLight) {
   toggleTheme(isLight);
 
   loadFeed("/api/news");
+
+  // Scroll event for scroll to top display
+  window.addEventListener("scroll", () => {
+    const btn = document.getElementById("scrollToTopBtn");
+    if (btn) {
+      if (window.scrollY > 400) {
+        btn.classList.remove("hidden");
+      } else {
+        btn.classList.add("hidden");
+      }
+    }
+  });
 
   // Periodically refresh the relative timestamps (every 60 s)
   setInterval(() => {
